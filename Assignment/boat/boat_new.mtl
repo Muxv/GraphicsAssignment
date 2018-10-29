@@ -146,6 +146,7 @@ newmtl Material__6089
 	Ke 0.0000 0.0000 0.0000
 	map_Ka Hamina.TGA
 	map_Kd Hamina.TGA
+	map_bump -bm 0.3000 bump__0.tga
 
 newmtl Material__6095
 	Ns 10.0000
@@ -160,6 +161,7 @@ newmtl Material__6095
 	Ke 0.0000 0.0000 0.0000
 	map_Ka Hamina.TGA
 	map_Kd Hamina.TGA
+	map_bump -bm 0.3000 bump__0.tga
 
 newmtl Material__6096
 	Ns 10.0000
@@ -174,6 +176,7 @@ newmtl Material__6096
 	Ke 0.0000 0.0000 0.0000
 	map_Ka Hamina.TGA
 	map_Kd Hamina.TGA
+	map_bump -bm 0.3000 bump__0.tga
 
 newmtl Material__6086
 	Ns 10.0000

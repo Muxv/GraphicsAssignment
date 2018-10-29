@@ -23,28 +23,28 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="shader\ship.fs">
-      <Filter>资源文件</Filter>
-    </None>
-    <None Include="shader\ship.vs">
-      <Filter>资源文件</Filter>
-    </None>
     <None Include="shader\skybox.fs">
       <Filter>资源文件</Filter>
     </None>
     <None Include="shader\skybox.vs">
       <Filter>资源文件</Filter>
     </None>
-    <None Include="shader\water.fs">
-      <Filter>资源文件</Filter>
-    </None>
-    <None Include="shader\water.vs">
-      <Filter>资源文件</Filter>
-    </None>
     <None Include="shader\sun.fs">
       <Filter>资源文件</Filter>
     </None>
     <None Include="shader\sun.vs">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="shader\depth_map.fs">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="shader\depth_map.vs">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="shader\object.fs">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="shader\object.vs">
       <Filter>资源文件</Filter>
     </None>
   </ItemGroup>

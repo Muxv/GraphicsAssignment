@@ -126,14 +126,14 @@
     <ClCompile Include="..\main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="shader\ship.fs" />
-    <None Include="shader\ship.vs" />
+    <None Include="shader\depth_map.fs" />
+    <None Include="shader\depth_map.vs" />
+    <None Include="shader\object.fs" />
+    <None Include="shader\object.vs" />
     <None Include="shader\skybox.fs" />
     <None Include="shader\skybox.vs" />
     <None Include="shader\sun.fs" />
     <None Include="shader\sun.vs" />
-    <None Include="shader\water.fs" />
-    <None Include="shader\water.vs" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

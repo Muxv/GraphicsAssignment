@@ -19,7 +19,13 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
 unsigned int loadCubemap(vector<std::string> faces);
-void renderSkyBox();
+
+void renderSkyBox(Shader &skyBoxShader);
+void renderShip(Shader &shipShader, Model &shipModel, int renderTimes);
+void renderWater(Shader &waterShader, Model &waterModel, int renderTimes);
+void renderSun(Shader &sunShader, Model &sunModel);
+void renderLight(Shader &objectShader, Model &objectModel);
+void renderlightSpaceMatrix(Shader &objectShader, Model &objectModel);
 
 // settings
 const unsigned int SCR_WIDTH = 1500;
@@ -37,55 +43,10 @@ float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
 //point light
-glm::vec3 sunPos(-3.20295f, 1.95351f, -4.73097f);
+glm::vec3 sunPos(-2.09321, 1.4637, -3.66447);
 // ship pos
 glm::vec3 shipPos(0.0f, 0.0f, 0.0f);
 
-//skybox 
-float skyboxVertices[] = {
-	// positions          
-	-1.0f,  1.0f, -1.0f,
-	-1.0f, -1.0f, -1.0f,
-	 1.0f, -1.0f, -1.0f,
-	 1.0f, -1.0f, -1.0f,
-	 1.0f,  1.0f, -1.0f,
-	-1.0f,  1.0f, -1.0f,
-
-	-1.0f, -1.0f,  1.0f,
-	-1.0f, -1.0f, -1.0f,
-	-1.0f,  1.0f, -1.0f,
-	-1.0f,  1.0f, -1.0f,
-	-1.0f,  1.0f,  1.0f,
-	-1.0f, -1.0f,  1.0f,
-
-	 1.0f, -1.0f, -1.0f,
-	 1.0f, -1.0f,  1.0f,
-	 1.0f,  1.0f,  1.0f,
-	 1.0f,  1.0f,  1.0f,
-	 1.0f,  1.0f, -1.0f,
-	 1.0f, -1.0f, -1.0f,
-
-	-1.0f, -1.0f,  1.0f,
-	-1.0f,  1.0f,  1.0f,
-	 1.0f,  1.0f,  1.0f,
-	 1.0f,  1.0f,  1.0f,
-	 1.0f, -1.0f,  1.0f,
-	-1.0f, -1.0f,  1.0f,
-
-	-1.0f,  1.0f, -1.0f,
-	 1.0f,  1.0f, -1.0f,
-	 1.0f,  1.0f,  1.0f,
-	 1.0f,  1.0f,  1.0f,
-	-1.0f,  1.0f,  1.0f,
-	-1.0f,  1.0f, -1.0f,
-
-	-1.0f, -1.0f, -1.0f,
-	-1.0f, -1.0f,  1.0f,
-	 1.0f, -1.0f, -1.0f,
-	 1.0f, -1.0f, -1.0f,
-	-1.0f, -1.0f,  1.0f,
-	 1.0f, -1.0f,  1.0f
-};
 int main()
 {
 
@@ -113,19 +74,7 @@ int main()
 		std::cout << "Failed to initialize GLAD" << std::endl;
 		return -1;
 	}
-
-
 	// -----------------------------------------------------------------------------------
-
-	GLuint skyboxVAO, skyboxVBO;
-	glGenVertexArrays(1, &skyboxVAO);
-	glGenBuffers(1, &skyboxVBO);
-	glBindVertexArray(skyboxVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-	glBindVertexArray(0);
 
 	vector <std::string> faces{
 		"skybox/right.jpg",
@@ -137,19 +86,43 @@ int main()
 	};
 
 	unsigned int cubemapTexture = loadCubemap(faces);
+	// -----------------------------------------------------------------------------------
+	const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
+	unsigned int depthMapFBO;
+	glGenFramebuffers(1, &depthMapFBO);
+	// create depth texture
+	unsigned int depthMap;
+	glGenTextures(1, &depthMap);
+	glBindTexture(GL_TEXTURE_2D, depthMap);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+	float borderColor[] = { 1.0, 1.0, 1.0, 1.0 };
+	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+	// attach depth texture as FBO's depth buffer
+	glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
+	glDrawBuffer(GL_NONE);
+	glReadBuffer(GL_NONE);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// -----------------------------------------------------------------------------------
 
 	Shader skyboxShader("shader/skybox.vs", "shader/skybox.fs");
-	Shader shipShader("shader/ship.vs", "shader/ship.fs");
-	Shader waterShader("shader/water.vs", "shader/water.fs");
+	Shader objectShader("shader/object.vs", "shader/object.fs");
 	Shader sunShader("shader/sun.vs", "shader/sun.fs");
+	Shader depthMappingShader("shader/depth_map.vs", "shader/depth_map.fs");
 
 	Model sun("sun/sun.obj");
 	Model ourModel("boat/boat_new.obj");
 	Model water("water/water.obj");
 
-
-	skyboxShader.setInt("skyboxTexture", 0);
-
+	depthMappingShader.setInt("shadowMap", 0);
+	objectShader.setInt("shadowMap", 0);
+	skyboxShader.setInt("skyboxTexture", 1);
+	
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -165,77 +138,27 @@ int main()
 		lastFrame = currentFrame;
 
 		processInput(window);
-		glm::mat4 model = glm::mat4(1.0f);
-		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-		glm::mat4 view = camera.GetViewMatrix();
 
-		// rend skybox
+	// the first rendering
+		glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
+		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+			glClear(GL_DEPTH_BUFFER_BIT);
+			renderShip(depthMappingShader, ourModel, 1);
+			renderWater(depthMappingShader, water, 1);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	// the second rendering 
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
 		glDepthFunc(GL_LEQUAL);
-
-		skyboxShader.use();
-		glm::mat4 skyview = glm::mat4(glm::mat3(view));
-		skyboxShader.setMat4("view", skyview);
-		skyboxShader.setMat4("projection", projection);
-
-		glBindVertexArray(skyboxVAO);
+		renderSkyBox(skyboxShader);
+		renderSun(sunShader, sun);
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-		glDrawArrays(GL_TRIANGLES, 0, 36);
-		glBindVertexArray(0);
-
-		// render the sun 
-		sunShader.use();
-		glm::mat4 sunModel = glm::mat4(1.0f);
-		sunModel = glm::translate(sunModel, sunPos);
-		sunModel = glm::scale(sunModel, glm::vec3(0.1f, 0.1f, 0.1f));
-
-		sunShader.setMat4("model", glm::translate(sunModel, sunPos));
-		sunShader.setMat4("projection", projection);
-		sunShader.setMat4("view", view);
-		sun.Draw(sunShader);
-
-
-		// render the ship
-		shipShader.use();
-		shipShader.setVec3("viewPos", camera.Position);
-
-		shipShader.setVec3("sunLight.position", sunPos);
-		shipShader.setVec3("sunLight.ambient", 0.05f, 0.05f, 0.05f);
-		shipShader.setVec3("sunLight.diffuse", 0.8f, 0.8f, 0.8f);
-		shipShader.setVec3("sunLight.specular", 1.0f, 1.0f, 1.0f);
-
-		shipShader.setVec3("rightLight.direction", shipPos - glm::vec3(2.04f, 0.72f, 2.35f));
-		shipShader.setVec3("rightLight.ambient", 0.05f, 0.05f, 0.05f);
-		shipShader.setVec3("rightLight.diffuse", 0.5f, 0.5f, 0.5f);
-		shipShader.setVec3("rightLight.specular", 0.7f, 0.7f, 0.7f);
-
-		shipShader.setVec3("leftLight.direction", shipPos - glm::vec3(3.36, 0.72, 0.224));
-		shipShader.setVec3("leftLight.ambient", 0.05f, 0.05f, 0.05f);
-		shipShader.setVec3("leftLight.diffuse", 0.5f, 0.5f, 0.5f);			
-		shipShader.setVec3("leftLight.specular", 0.7f, 0.7f, 0.7f);
-
-		shipShader.setVec3("backLight.direction", shipPos - glm::vec3(-3.17, 0.77, -1.82));
-		shipShader.setVec3("backLight.ambient", 0.05f, 0.05f, 0.05f);
-		shipShader.setVec3("backLight.diffuse", 0.5f, 0.5f, 0.5f);
-		shipShader.setVec3("backLight.specular", 0.7f, 0.7f, 0.7f);
-
-		shipShader.setMat4("projection", projection);
-		shipShader.setMat4("view", view);
-
-		model = glm::rotate(model, glm::radians(60.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		model = glm::translate(model, shipPos); 
-		model = glm::scale(model, glm::vec3(0.001f, 0.001f, 0.001f));
-		shipShader.setMat4("model", model);
-		ourModel.Draw(shipShader);
-
-		// render the water
-		waterShader.use();
-		waterShader.setMat4("model", glm::mat4(1.0f));
-		waterShader.setMat4("projection", projection);
-		waterShader.setMat4("view", view);
-		water.Draw(waterShader);
-
-
+		glBindTexture(GL_TEXTURE_2D, depthMap);
+			renderShip(objectShader, ourModel, 2);
+			renderWater(objectShader, water, 2);
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
@@ -263,68 +186,7 @@ void processInput(GLFWwindow *window)
 
 	}
 }
-//GLuint skyboxVAO = 0;
-//GLuint skyboxVBO = 0;
-void renderSkyBox() {
 
-	float skyboxVertices[] = {
-		// positions          
-		-1.0f,  1.0f, -1.0f,
-		-1.0f, -1.0f, -1.0f,
-		 1.0f, -1.0f, -1.0f,
-		 1.0f, -1.0f, -1.0f,
-		 1.0f,  1.0f, -1.0f,
-		-1.0f,  1.0f, -1.0f,
-
-		-1.0f, -1.0f,  1.0f,
-		-1.0f, -1.0f, -1.0f,
-		-1.0f,  1.0f, -1.0f,
-		-1.0f,  1.0f, -1.0f,
-		-1.0f,  1.0f,  1.0f,
-		-1.0f, -1.0f,  1.0f,
-
-		 1.0f, -1.0f, -1.0f,
-		 1.0f, -1.0f,  1.0f,
-		 1.0f,  1.0f,  1.0f,
-		 1.0f,  1.0f,  1.0f,
-		 1.0f,  1.0f, -1.0f,
-		 1.0f, -1.0f, -1.0f,
-
-		-1.0f, -1.0f,  1.0f,
-		-1.0f,  1.0f,  1.0f,
-		 1.0f,  1.0f,  1.0f,
-		 1.0f,  1.0f,  1.0f,
-		 1.0f, -1.0f,  1.0f,
-		-1.0f, -1.0f,  1.0f,
-
-		-1.0f,  1.0f, -1.0f,
-		 1.0f,  1.0f, -1.0f,
-		 1.0f,  1.0f,  1.0f,
-		 1.0f,  1.0f,  1.0f,
-		-1.0f,  1.0f,  1.0f,
-		-1.0f,  1.0f, -1.0f,
-
-		-1.0f, -1.0f, -1.0f,
-		-1.0f, -1.0f,  1.0f,
-		 1.0f, -1.0f, -1.0f,
-		 1.0f, -1.0f, -1.0f,
-		-1.0f, -1.0f,  1.0f,
-		 1.0f, -1.0f,  1.0f
-	};
-	GLuint skyboxVAO, skyboxVBO;
-	glGenVertexArrays(1, &skyboxVAO);
-	glGenBuffers(1, &skyboxVBO);
-	glBindVertexArray(skyboxVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-
-	glBindVertexArray(skyboxVAO);
-	glDrawArrays(GL_TRIANGLES, 0, 36);
-	glBindVertexArray(0);
-
-}
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -378,5 +240,188 @@ unsigned int loadCubemap(vector<std::string> faces) {
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
 	return textureID;
+}
+
+void renderSkyBox(Shader &skyBoxShader) {
+
+	float skyboxVertices[] = {
+		// positions          
+		-1.0f,  1.0f, -1.0f,
+		-1.0f, -1.0f, -1.0f,
+		 1.0f, -1.0f, -1.0f,
+		 1.0f, -1.0f, -1.0f,
+		 1.0f,  1.0f, -1.0f,
+		-1.0f,  1.0f, -1.0f,
+
+		-1.0f, -1.0f,  1.0f,
+		-1.0f, -1.0f, -1.0f,
+		-1.0f,  1.0f, -1.0f,
+		-1.0f,  1.0f, -1.0f,
+		-1.0f,  1.0f,  1.0f,
+		-1.0f, -1.0f,  1.0f,
+
+		 1.0f, -1.0f, -1.0f,
+		 1.0f, -1.0f,  1.0f,
+		 1.0f,  1.0f,  1.0f,
+		 1.0f,  1.0f,  1.0f,
+		 1.0f,  1.0f, -1.0f,
+		 1.0f, -1.0f, -1.0f,
+
+		-1.0f, -1.0f,  1.0f,
+		-1.0f,  1.0f,  1.0f,
+		 1.0f,  1.0f,  1.0f,
+		 1.0f,  1.0f,  1.0f,
+		 1.0f, -1.0f,  1.0f,
+		-1.0f, -1.0f,  1.0f,
+
+		-1.0f,  1.0f, -1.0f,
+		 1.0f,  1.0f, -1.0f,
+		 1.0f,  1.0f,  1.0f,
+		 1.0f,  1.0f,  1.0f,
+		-1.0f,  1.0f,  1.0f,
+		-1.0f,  1.0f, -1.0f,
+
+		-1.0f, -1.0f, -1.0f,
+		-1.0f, -1.0f,  1.0f,
+		 1.0f, -1.0f, -1.0f,
+		 1.0f, -1.0f, -1.0f,
+		-1.0f, -1.0f,  1.0f,
+		 1.0f, -1.0f,  1.0f
+	};
+
+	GLuint skyboxVAO, skyboxVBO;
+	glGenVertexArrays(1, &skyboxVAO);
+	glGenBuffers(1, &skyboxVBO);
+	glBindVertexArray(skyboxVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glBindVertexArray(0);
+
+
+	glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+	glm::mat4 view = camera.GetViewMatrix();
+	view = glm::mat4(glm::mat3(view));
+
+	skyBoxShader.use();
+	skyBoxShader.setMat4("view", view);
+	skyBoxShader.setMat4("projection", projection);
+
+	glBindVertexArray(skyboxVAO);
+	//glActiveTexture(GL_TEXTURE1);
+	//glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+	glDrawArrays(GL_TRIANGLES, 0, 36);
+	glBindVertexArray(0);
+}
+
+void renderSun(Shader &sunShader, Model &sunModel) {
+
+	glm::mat4 model = glm::mat4(1.0f);
+	model = glm::translate(model, sunPos);
+	model = glm::scale(model, glm::vec3(0.1f, 0.1f, 0.1f));
+
+	glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+	glm::mat4 view = camera.GetViewMatrix();
+
+	sunShader.use();
+
+	sunShader.setMat4("model", glm::translate(model, sunPos));
+	sunShader.setMat4("projection", projection);
+	sunShader.setMat4("view", view);
+	sunModel.Draw(sunShader);
+}
+
+void renderWater(Shader &waterShader, Model &waterModel, int renderTimes) {
+
+	waterShader.use();
+	renderlightSpaceMatrix(waterShader, waterModel);
+	glm::mat4 model = glm::mat4(1.0f);
+	waterShader.setMat4("model", model);
+
+
+	if (renderTimes == 1) { // for render depth
+
+	}
+	else if (renderTimes == 2) {
+		waterShader.setInt("objectNum", 2);
+		
+		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+		glm::mat4 view = camera.GetViewMatrix();
+
+		waterShader.setMat4("projection", projection);
+		waterShader.setMat4("view", view);
+		renderLight(waterShader, waterModel);
+	}
+	waterModel.Draw(waterShader);
+}
+
+void renderShip(Shader &shipShader, Model &shipModel, int renderTimes) {
+	
+	shipShader.use();
+
+	renderlightSpaceMatrix(shipShader, shipModel);
+	
+
+	glm::mat4 model = glm::mat4(1.0f);
+	model = glm::rotate(model, glm::radians(60.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	model = glm::translate(model, shipPos);
+	model = glm::scale(model, glm::vec3(0.001f, 0.001f, 0.001f));
+
+	shipShader.setMat4("model", model);
+
+	if (renderTimes == 1) { // for render depth
+
+	}
+	else if (renderTimes == 2) { // render normally
+		shipShader.setInt("objectNum", 1);
+
+		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+		glm::mat4 view = camera.GetViewMatrix();
+
+		shipShader.setMat4("projection", projection);
+		shipShader.setMat4("view", view);
+		renderLight(shipShader, shipModel);
+	}
+	shipModel.Draw(shipShader);
+
+}
+
+void renderlightSpaceMatrix(Shader &objectShader, Model &objectModel) {
+
+	glm::mat4 lightProjection, lightView;
+	glm::mat4 lightSpaceMatrix;
+	float near_plane = 0.25f, far_plane = 12.5f;
+	lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
+	lightView = glm::lookAt(sunPos, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0));
+	lightSpaceMatrix = lightProjection * lightView;
+
+	objectShader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
+}
+
+void renderLight(Shader &objectShader, Model &objectModel) {
+
+	// without position infomation
+	objectShader.setVec3("viewPos", camera.Position);
+
+	objectShader.setVec3("sunLight.position", sunPos);
+	objectShader.setVec3("sunLight.ambient", 0.05f, 0.05f, 0.05f);
+	objectShader.setVec3("sunLight.diffuse", 0.8f, 0.8f, 0.8f);
+	objectShader.setVec3("sunLight.specular", 1.0f, 1.0f, 1.0f);
+
+	objectShader.setVec3("rightLight.direction", shipPos - glm::vec3(2.04f, 0.72f, 2.35f));
+	objectShader.setVec3("rightLight.ambient", 0.05f, 0.05f, 0.05f);
+	objectShader.setVec3("rightLight.diffuse", 0.5f, 0.5f, 0.5f);
+	objectShader.setVec3("rightLight.specular", 0.7f, 0.7f, 0.7f);
+
+	objectShader.setVec3("leftLight.direction", shipPos - glm::vec3(3.36, 0.72, 0.224));
+	objectShader.setVec3("leftLight.ambient", 0.05f, 0.05f, 0.05f);
+	objectShader.setVec3("leftLight.diffuse", 0.5f, 0.5f, 0.5f);
+	objectShader.setVec3("leftLight.specular", 0.7f, 0.7f, 0.7f);
+
+	objectShader.setVec3("backLight.direction", shipPos - glm::vec3(-3.17, 0.77, -1.82));
+	objectShader.setVec3("backLight.ambient", 0.05f, 0.05f, 0.05f);
+	objectShader.setVec3("backLight.diffuse", 0.5f, 0.5f, 0.5f);
+	objectShader.setVec3("backLight.specular", 0.7f, 0.7f, 0.7f);
 }
 
