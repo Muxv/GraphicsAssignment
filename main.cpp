@@ -198,15 +198,21 @@ int main()
 		// render the ship
 		shipShader.use();
 		shipShader.setVec3("viewPos", camera.Position);
-		shipShader.setVec3("rightMainLight.direction", shipPos - glm::vec3(2.04f, 0.72f, 2.35f));
-		shipShader.setVec3("rightMainLight.ambient", 0.05f, 0.05f, 0.05f);
-		shipShader.setVec3("rightMainLight.diffuse", 0.5f, 0.5f, 0.5f);
-		shipShader.setVec3("rightMainLight.specular", 0.7f, 0.7f, 0.7f);
 
-		shipShader.setVec3("leftMainLight.direction", shipPos - glm::vec3(3.36, 0.72, 0.224));
-		shipShader.setVec3("leftMainLight.ambient", 0.05f, 0.05f, 0.05f);
-		shipShader.setVec3("leftMainLight.diffuse", 0.5f, 0.5f, 0.5f);			
-		shipShader.setVec3("leftMainLight.specular", 0.7f, 0.7f, 0.7f);
+		shipShader.setVec3("sunLight.position", sunPos);
+		shipShader.setVec3("sunLight.ambient", 0.05f, 0.05f, 0.05f);
+		shipShader.setVec3("sunLight.diffuse", 0.8f, 0.8f, 0.8f);
+		shipShader.setVec3("sunLight.specular", 1.0f, 1.0f, 1.0f);
+
+		shipShader.setVec3("rightLight.direction", shipPos - glm::vec3(2.04f, 0.72f, 2.35f));
+		shipShader.setVec3("rightLight.ambient", 0.05f, 0.05f, 0.05f);
+		shipShader.setVec3("rightLight.diffuse", 0.5f, 0.5f, 0.5f);
+		shipShader.setVec3("rightLight.specular", 0.7f, 0.7f, 0.7f);
+
+		shipShader.setVec3("leftLight.direction", shipPos - glm::vec3(3.36, 0.72, 0.224));
+		shipShader.setVec3("leftLight.ambient", 0.05f, 0.05f, 0.05f);
+		shipShader.setVec3("leftLight.diffuse", 0.5f, 0.5f, 0.5f);			
+		shipShader.setVec3("leftLight.specular", 0.7f, 0.7f, 0.7f);
 
 		shipShader.setVec3("backLight.direction", shipPos - glm::vec3(-3.17, 0.77, -1.82));
 		shipShader.setVec3("backLight.ambient", 0.05f, 0.05f, 0.05f);
@@ -373,3 +379,4 @@ unsigned int loadCubemap(vector<std::string> faces) {
 
 	return textureID;
 }
+

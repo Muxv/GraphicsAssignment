@@ -7,7 +7,6 @@ layout (location = 4) in vec3 aBitangent;
 
 out VS_OUT {
     vec3 FragPos;
-//	vec3 Normal;
     vec2 TexCoords;
     mat3 TBN;
 } vs_out;
