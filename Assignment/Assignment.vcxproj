@@ -130,6 +130,8 @@
     <None Include="shader\ship.vs" />
     <None Include="shader\skybox.fs" />
     <None Include="shader\skybox.vs" />
+    <None Include="shader\sun.fs" />
+    <None Include="shader\sun.vs" />
     <None Include="shader\water.fs" />
     <None Include="shader\water.vs" />
   </ItemGroup>

@@ -41,5 +41,11 @@
     <None Include="shader\water.vs">
       <Filter>资源文件</Filter>
     </None>
+    <None Include="shader\sun.fs">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="shader\sun.vs">
+      <Filter>资源文件</Filter>
+    </None>
   </ItemGroup>
 </Project>

@@ -33,7 +33,6 @@ void main()
 	norm = normalize(fs_in.TBN * norm);
 
 	vec3 viewDir = normalize(viewPos - fs_in.FragPos);
-
 	vec3 objectColor = texture(texture_diffuse1, fs_in.TexCoords).rgb;
 	// dirLighting includes the diff and specular
 	vec3 rightDirLighting = CalcDirLight(rightMainLight, norm, viewDir);

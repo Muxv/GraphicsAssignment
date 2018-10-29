@@ -37,7 +37,7 @@ float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
 //point light
-
+glm::vec3 sunPos(-3.20295f, 1.95351f, -4.73097f);
 // ship pos
 glm::vec3 shipPos(0.0f, 0.0f, 0.0f);
 
@@ -139,9 +139,11 @@ int main()
 	unsigned int cubemapTexture = loadCubemap(faces);
 
 	Shader skyboxShader("shader/skybox.vs", "shader/skybox.fs");
-	Shader ourShader("shader/ship.vs", "shader/ship.fs");
+	Shader shipShader("shader/ship.vs", "shader/ship.fs");
 	Shader waterShader("shader/water.vs", "shader/water.fs");
+	Shader sunShader("shader/sun.vs", "shader/sun.fs");
 
+	Model sun("sun/sun.obj");
 	Model ourModel("boat/boat_new.obj");
 	Model water("water/water.obj");
 
@@ -181,40 +183,51 @@ int main()
 		glDrawArrays(GL_TRIANGLES, 0, 36);
 		glBindVertexArray(0);
 
-			
-		ourShader.use();
-		ourShader.setVec3("viewPos", camera.Position);
-		ourShader.setVec3("rightMainLight.direction", shipPos - glm::vec3(2.04f, 0.72f, 2.35f));
-		ourShader.setVec3("rightMainLight.ambient", 0.05f, 0.05f, 0.05f);
-		ourShader.setVec3("rightMainLight.diffuse", 0.5f, 0.5f, 0.5f);
-		ourShader.setVec3("rightMainLight.specular", 0.7f, 0.7f, 0.7f);
+		// render the sun 
+		sunShader.use();
+		glm::mat4 sunModel = glm::mat4(1.0f);
+		sunModel = glm::translate(sunModel, sunPos);
+		sunModel = glm::scale(sunModel, glm::vec3(0.1f, 0.1f, 0.1f));
 
-		ourShader.setVec3("leftMainLight.direction", shipPos - glm::vec3(3.36, 0.72, 0.224));
-		ourShader.setVec3("leftMainLight.ambient", 0.05f, 0.05f, 0.05f);
-		ourShader.setVec3("leftMainLight.diffuse", 0.5f, 0.5f, 0.5f);			
-		ourShader.setVec3("leftMainLight.specular", 0.7f, 0.7f, 0.7f);
+		sunShader.setMat4("model", glm::translate(sunModel, sunPos));
+		sunShader.setMat4("projection", projection);
+		sunShader.setMat4("view", view);
+		sun.Draw(sunShader);
 
-		ourShader.setVec3("backLight.direction", shipPos - glm::vec3(-3.17, 0.77, -1.82));
-		ourShader.setVec3("backLight.ambient", 0.05f, 0.05f, 0.05f);
-		ourShader.setVec3("backLight.diffuse", 0.5f, 0.5f, 0.5f);
-		ourShader.setVec3("backLight.specular", 0.7f, 0.7f, 0.7f);
 
-		ourShader.setMat4("projection", projection);
-		ourShader.setMat4("view", view);
+		// render the ship
+		shipShader.use();
+		shipShader.setVec3("viewPos", camera.Position);
+		shipShader.setVec3("rightMainLight.direction", shipPos - glm::vec3(2.04f, 0.72f, 2.35f));
+		shipShader.setVec3("rightMainLight.ambient", 0.05f, 0.05f, 0.05f);
+		shipShader.setVec3("rightMainLight.diffuse", 0.5f, 0.5f, 0.5f);
+		shipShader.setVec3("rightMainLight.specular", 0.7f, 0.7f, 0.7f);
+
+		shipShader.setVec3("leftMainLight.direction", shipPos - glm::vec3(3.36, 0.72, 0.224));
+		shipShader.setVec3("leftMainLight.ambient", 0.05f, 0.05f, 0.05f);
+		shipShader.setVec3("leftMainLight.diffuse", 0.5f, 0.5f, 0.5f);			
+		shipShader.setVec3("leftMainLight.specular", 0.7f, 0.7f, 0.7f);
+
+		shipShader.setVec3("backLight.direction", shipPos - glm::vec3(-3.17, 0.77, -1.82));
+		shipShader.setVec3("backLight.ambient", 0.05f, 0.05f, 0.05f);
+		shipShader.setVec3("backLight.diffuse", 0.5f, 0.5f, 0.5f);
+		shipShader.setVec3("backLight.specular", 0.7f, 0.7f, 0.7f);
+
+		shipShader.setMat4("projection", projection);
+		shipShader.setMat4("view", view);
 
 		model = glm::rotate(model, glm::radians(60.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		model = glm::translate(model, shipPos); // translate it down so it's at the center of the scene
-		model = glm::scale(model, glm::vec3(0.001f, 0.001f, 0.001f));	// it's a bit too big for our scene, so scale it down
-		ourShader.setMat4("model", model);
-		ourModel.Draw(ourShader);
+		model = glm::translate(model, shipPos); 
+		model = glm::scale(model, glm::vec3(0.001f, 0.001f, 0.001f));
+		shipShader.setMat4("model", model);
+		ourModel.Draw(shipShader);
 
+		// render the water
 		waterShader.use();
 		waterShader.setMat4("model", glm::mat4(1.0f));
 		waterShader.setMat4("projection", projection);
 		waterShader.setMat4("view", view);
 		water.Draw(waterShader);
-
-			// render the water
 
 
 		glfwSwapBuffers(window);
