@@ -130,6 +130,8 @@
     <None Include="shader\debug.vs" />
     <None Include="shader\depth_map.fs" />
     <None Include="shader\depth_map.vs" />
+    <None Include="shader\hdr.fs" />
+    <None Include="shader\hdr.vs" />
     <None Include="shader\object.fs" />
     <None Include="shader\object.vs" />
     <None Include="shader\skybox.fs" />

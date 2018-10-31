@@ -30,6 +30,9 @@ void renderLight(Shader &objectShader, Model &objectModel);
 void renderlightSpaceMatrix(Shader &objectShader);
 
 bool DebugMode = false;
+bool hdr = true;
+bool hdrKeyPressed = false;
+float exposure = 0.5f;
 
 // settings
 const unsigned int SCR_WIDTH = 1500;
@@ -92,8 +95,8 @@ int main()
 	};
 
 	unsigned int cubemapTexture = loadCubemap(faces);
-	// render light for hdr
-	// -----------------------------------------------------------------------------------
+
+	// frameBuffer for depth
 	unsigned int hdrFBO;
 	glGenFramebuffers(1, &hdrFBO);
 	// create floating point color buffer
@@ -103,16 +106,24 @@ int main()
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	// create depth buffer (renderbuffer)
+	unsigned int rboDepth;
+	glGenRenderbuffers(1, &rboDepth);
+	glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, SCR_WIDTH, SCR_HEIGHT);
+	// attach buffers
+	glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorBuffer, 0);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		std::cout << "Framebuffer not complete!" << std::endl;
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	// -----------------------------------------------------------------------------------
 
-
-
-	// render shadow
-	// -----------------------------------------------------------------------------------
+	// frameBuffer for depth
 	const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
-	unsigned int depthMapFBO;
-	glGenFramebuffers(1, &depthMapFBO);
+	unsigned int depthFBO;
+	glGenFramebuffers(1, &depthFBO);
 
 	unsigned int depthMap;
 	glGenTextures(1, &depthMap);
@@ -125,7 +136,7 @@ int main()
 	float borderColor[] = { 1.0, 1.0, 1.0, 1.0 };
 	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
 	// attach depth texture as FBO's depth buffer
-	glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, depthFBO);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
 	glDrawBuffer(GL_NONE);
 	glReadBuffer(GL_NONE);
@@ -138,6 +149,7 @@ int main()
 	Shader sunShader("shader/sun.vs", "shader/sun.fs");
 	Shader depthMappingShader("shader/depth_map.vs", "shader/depth_map.fs");
 	Shader debugDepthQuad("shader/debug.vs", "shader/debug.fs");
+	Shader hdrShader("shader/hdr.vs", "shader/hdr.fs");
 
 	Model sun("sun/sun.obj");
 	Model ourModel("boat/boat_new.obj");
@@ -151,11 +163,15 @@ int main()
 
 	skyboxShader.use();
 	skyboxShader.setInt("skyboxTexture", 1);
+
+	hdrShader.use();
+	hdrShader.setInt("hdrBuffer", 2);
 	
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LEQUAL);
 	//glEnable(GL_CULL_FACE);
 
 	while (!glfwWindowShouldClose(window))
@@ -168,30 +184,38 @@ int main()
 		lastFrame = currentFrame;
 
 		processInput(window);
-
-	// the first rendering
+	// first rendering --> depth
 		glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
-		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+		glBindFramebuffer(GL_FRAMEBUFFER, depthFBO);
 			glClear(GL_DEPTH_BUFFER_BIT);
-			renderShip(depthMappingShader, ourModel, false);
 			renderWater(depthMappingShader, water, false);
-			
+			renderShip(depthMappingShader, ourModel, false);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	// the second rendering 
-		glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	// second rendering --> color
+		glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
+			glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			glActiveTexture(GL_TEXTURE1);
 			glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-		glDepthFunc(GL_LEQUAL);
-		renderSkyBox(skyboxShader);
-		renderSun(sunShader, sun);
-		glActiveTexture(GL_TEXTURE10);
-		glBindTexture(GL_TEXTURE_2D, depthMap);
+			renderSkyBox(skyboxShader);
+			renderSun(sunShader, sun);
+			glActiveTexture(GL_TEXTURE10);
+			glBindTexture(GL_TEXTURE_2D, depthMap);
 			renderShip(objectShader, ourModel, true);
 			renderWater(objectShader, water, true);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		
+	//  third rendering  --> the scene
+
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		hdrShader.use();
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, colorBuffer);
+		hdrShader.setInt("hdr", hdr);
+		hdrShader.setFloat("exposure", exposure);
+		renderQuad();
+
 	// use for debug
 		if (DebugMode) {
 			float near_plane = 1.0f, far_plane = 7.5f;

@@ -53,5 +53,11 @@
     <None Include="shader\debug.vs">
       <Filter>资源文件</Filter>
     </None>
+    <None Include="shader\hdr.fs">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="shader\hdr.vs">
+      <Filter>资源文件</Filter>
+    </None>
   </ItemGroup>
 </Project>
