@@ -126,6 +126,8 @@
     <ClCompile Include="..\main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="shader\debug.fs" />
+    <None Include="shader\debug.vs" />
     <None Include="shader\depth_map.fs" />
     <None Include="shader\depth_map.vs" />
     <None Include="shader\object.fs" />

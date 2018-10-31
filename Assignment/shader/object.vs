@@ -24,9 +24,12 @@ void main()
 	vs_out.FragPosLightSpace = lightSpaceMatrix * vec4(vs_out.FragPos, 1.0);
 	gl_Position = projection * view * model * vec4(aPos, 1.0);
 
+	vec3 Normal = transpose(inverse(mat3(model))) * aNormal;
+
 	mat3 normalMatrix = transpose(inverse(mat3(model)));
+
     vec3 T = normalize(normalMatrix * aTangent);
-    vec3 N = normalize(normalMatrix * aNormal);
+    vec3 N = normalize(normalMatrix * Normal);
     T = normalize(T - dot(T, N) * N);
     vec3 B = cross(N, T);
     

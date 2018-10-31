@@ -14,6 +14,8 @@
 
 using std::vector;
 
+void renderQuad();
+
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
@@ -21,11 +23,13 @@ void processInput(GLFWwindow *window);
 unsigned int loadCubemap(vector<std::string> faces);
 
 void renderSkyBox(Shader &skyBoxShader);
-void renderShip(Shader &shipShader, Model &shipModel, int renderTimes);
-void renderWater(Shader &waterShader, Model &waterModel, int renderTimes);
+void renderShip(Shader &shipShader, Model &shipModel, bool isRenderLight);
+void renderWater(Shader &waterShader, Model &waterModel, bool isRenderLight);
 void renderSun(Shader &sunShader, Model &sunModel);
 void renderLight(Shader &objectShader, Model &objectModel);
-void renderlightSpaceMatrix(Shader &objectShader, Model &objectModel);
+void renderlightSpaceMatrix(Shader &objectShader);
+
+bool DebugMode = false;
 
 // settings
 const unsigned int SCR_WIDTH = 1500;
@@ -43,8 +47,10 @@ float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
 //point light
-glm::vec3 sunPos(-2.09321, 1.4637, -3.66447);
+glm::vec3 sunPos(0.829116, 2.7817, -4.29651);
+//glm::vec3 sunPos(2.39247, 0.307163, -2.48315);
 // ship pos
+//glm::vec3 shipPos(0.0f, 3.0f, 0.0f);
 glm::vec3 shipPos(0.0f, 0.0f, 0.0f);
 
 int main()
@@ -86,11 +92,28 @@ int main()
 	};
 
 	unsigned int cubemapTexture = loadCubemap(faces);
+	// render light for hdr
+	// -----------------------------------------------------------------------------------
+	unsigned int hdrFBO;
+	glGenFramebuffers(1, &hdrFBO);
+	// create floating point color buffer
+	unsigned int colorBuffer;
+	glGenTextures(1, &colorBuffer);
+	glBindTexture(GL_TEXTURE_2D, colorBuffer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	// -----------------------------------------------------------------------------------
+
+
+
+	// render shadow
 	// -----------------------------------------------------------------------------------
 	const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
 	unsigned int depthMapFBO;
 	glGenFramebuffers(1, &depthMapFBO);
-	// create depth texture
+
 	unsigned int depthMap;
 	glGenTextures(1, &depthMap);
 	glBindTexture(GL_TEXTURE_2D, depthMap);
@@ -114,19 +137,26 @@ int main()
 	Shader objectShader("shader/object.vs", "shader/object.fs");
 	Shader sunShader("shader/sun.vs", "shader/sun.fs");
 	Shader depthMappingShader("shader/depth_map.vs", "shader/depth_map.fs");
+	Shader debugDepthQuad("shader/debug.vs", "shader/debug.fs");
 
 	Model sun("sun/sun.obj");
 	Model ourModel("boat/boat_new.obj");
 	Model water("water/water.obj");
 
-	depthMappingShader.setInt("shadowMap", 0);
-	objectShader.setInt("shadowMap", 0);
+	debugDepthQuad.use();
+	debugDepthQuad.setInt("depthMap", 0);
+
+	objectShader.use();
+	objectShader.setInt("shadowMap", 10);
+
+	skyboxShader.use();
 	skyboxShader.setInt("skyboxTexture", 1);
 	
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_DEPTH_TEST);
+	//glEnable(GL_CULL_FACE);
 
 	while (!glfwWindowShouldClose(window))
 	{
@@ -143,22 +173,37 @@ int main()
 		glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
 		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
 			glClear(GL_DEPTH_BUFFER_BIT);
-			renderShip(depthMappingShader, ourModel, 1);
-			renderWater(depthMappingShader, water, 1);
+			renderShip(depthMappingShader, ourModel, false);
+			renderWater(depthMappingShader, water, false);
+			
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	// the second rendering 
+		glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			glActiveTexture(GL_TEXTURE1);
 			glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
 		glDepthFunc(GL_LEQUAL);
 		renderSkyBox(skyboxShader);
 		renderSun(sunShader, sun);
-		glActiveTexture(GL_TEXTURE0);
+		glActiveTexture(GL_TEXTURE10);
 		glBindTexture(GL_TEXTURE_2D, depthMap);
-			renderShip(objectShader, ourModel, 2);
-			renderWater(objectShader, water, 2);
+			renderShip(objectShader, ourModel, true);
+			renderWater(objectShader, water, true);
+	// use for debug
+		if (DebugMode) {
+			float near_plane = 1.0f, far_plane = 7.5f;
+			debugDepthQuad.use();
+			debugDepthQuad.setFloat("near_plane", near_plane);
+			debugDepthQuad.setFloat("far_plane", far_plane);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, depthMap);
+			renderQuad();
+		}
+
+
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
@@ -186,7 +231,6 @@ void processInput(GLFWwindow *window)
 
 	}
 }
-
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -319,31 +363,29 @@ void renderSun(Shader &sunShader, Model &sunModel) {
 
 	glm::mat4 model = glm::mat4(1.0f);
 	model = glm::translate(model, sunPos);
-	model = glm::scale(model, glm::vec3(0.1f, 0.1f, 0.1f));
+	model = glm::scale(model, glm::vec3(0.05f, 0.05f, 0.05f));
 
 	glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 	glm::mat4 view = camera.GetViewMatrix();
 
 	sunShader.use();
-
-	sunShader.setMat4("model", glm::translate(model, sunPos));
+	sunShader.setMat4("model", model);
 	sunShader.setMat4("projection", projection);
 	sunShader.setMat4("view", view);
 	sunModel.Draw(sunShader);
 }
 
-void renderWater(Shader &waterShader, Model &waterModel, int renderTimes) {
+void renderWater(Shader &waterShader, Model &waterModel, bool isRenderLight) {
 
 	waterShader.use();
-	renderlightSpaceMatrix(waterShader, waterModel);
+	renderlightSpaceMatrix(waterShader);
 	glm::mat4 model = glm::mat4(1.0f);
 	waterShader.setMat4("model", model);
 
-
-	if (renderTimes == 1) { // for render depth
+	if (!isRenderLight) { // for render depth
 
 	}
-	else if (renderTimes == 2) {
+	else if (isRenderLight) {
 		waterShader.setInt("objectNum", 2);
 		
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
@@ -356,24 +398,24 @@ void renderWater(Shader &waterShader, Model &waterModel, int renderTimes) {
 	waterModel.Draw(waterShader);
 }
 
-void renderShip(Shader &shipShader, Model &shipModel, int renderTimes) {
+void renderShip(Shader &shipShader, Model &shipModel, bool isRenderLight) {
 	
 	shipShader.use();
 
-	renderlightSpaceMatrix(shipShader, shipModel);
+	renderlightSpaceMatrix(shipShader);
 	
-
 	glm::mat4 model = glm::mat4(1.0f);
 	model = glm::rotate(model, glm::radians(60.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	model = glm::translate(model, shipPos);
 	model = glm::scale(model, glm::vec3(0.001f, 0.001f, 0.001f));
-
+	
 	shipShader.setMat4("model", model);
 
-	if (renderTimes == 1) { // for render depth
+	if (!isRenderLight) { // for render depth
 
 	}
-	else if (renderTimes == 2) { // render normally
+	else if (isRenderLight) {
+
 		shipShader.setInt("objectNum", 1);
 
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
@@ -387,11 +429,12 @@ void renderShip(Shader &shipShader, Model &shipModel, int renderTimes) {
 
 }
 
-void renderlightSpaceMatrix(Shader &objectShader, Model &objectModel) {
+void renderlightSpaceMatrix(Shader &objectShader) {
 
-	glm::mat4 lightProjection, lightView;
-	glm::mat4 lightSpaceMatrix;
-	float near_plane = 0.25f, far_plane = 12.5f;
+	glm::mat4 lightProjection = glm::mat4(1.0f);
+	glm::mat4 lightView = glm::mat4(1.0f);
+	glm::mat4 lightSpaceMatrix = glm::mat4(1.0f);
+	float near_plane = 1.0f, far_plane = 7.5f;
 	lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
 	lightView = glm::lookAt(sunPos, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0));
 	lightSpaceMatrix = lightProjection * lightView;
@@ -425,3 +468,31 @@ void renderLight(Shader &objectShader, Model &objectModel) {
 	objectShader.setVec3("backLight.specular", 0.7f, 0.7f, 0.7f);
 }
 
+unsigned int quadVAO = 0;
+unsigned int quadVBO;
+void renderQuad()
+{
+	if (quadVAO == 0)
+	{
+		float quadVertices[] = {
+			// positions        // texture Coords
+			-1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+			-1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+			 1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
+			 1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+		};
+		// setup plane VAO
+		glGenVertexArrays(1, &quadVAO);
+		glGenBuffers(1, &quadVBO);
+		glBindVertexArray(quadVAO);
+		glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+	}
+	glBindVertexArray(quadVAO);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glBindVertexArray(0);
+}

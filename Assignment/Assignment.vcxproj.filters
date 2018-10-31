@@ -47,5 +47,11 @@
     <None Include="shader\object.vs">
       <Filter>资源文件</Filter>
     </None>
+    <None Include="shader\debug.fs">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="shader\debug.vs">
+      <Filter>资源文件</Filter>
+    </None>
   </ItemGroup>
 </Project>
