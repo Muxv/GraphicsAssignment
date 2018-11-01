@@ -1,13 +1,14 @@
 ﻿#version 330 core
 
+layout (location = 0) out vec4 FragColor;
+layout (location = 1) out vec4 BrightColor;
+
 in VS_OUT {
     vec3 FragPos;
     vec2 TexCoords;
     mat3 TBN;
 	vec4 FragPosLightSpace;
 } fs_in;
-
-out vec4 FragColor;
 
 struct PointLight{
 	vec3 position;
@@ -65,11 +66,18 @@ void main()
 	if (objectNum == 1){
 		vec3 lighting =  objectColor * ((1 - shadow) * mainLight + baseLight);// * mainLight;// + baseLight);
 		FragColor = vec4(lighting, 1.0f);
+		float brightness = dot(lighting, vec3(0.2126, 0.7152, 0.0722));
+		if(brightness > 1.0) BrightColor = vec4(lighting, 1.0);
+		else BrightColor = vec4(0.0, 0.0, 0.0, 1.0f);
 	}
 	else if (objectNum == 2){
 		vec3 lighting = objectColor * ((1 - shadow)) + shadow * 0.2 * objectColor;// * mainLight;//((0.9 - shadow) * mainLight) * 
 		FragColor = vec4(lighting, 0.5f);
+		float brightness = dot(lighting, vec3(0.2126, 0.7152, 0.0722));
+		if(brightness > 1.0) BrightColor = vec4(lighting, 1.0);
+		else BrightColor = vec4(0.0, 0.0, 0.0, 0.5f);
 	}
+	
 }
 
 
