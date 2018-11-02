@@ -12,6 +12,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+using namespace std;
 using std::vector;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
@@ -23,6 +24,7 @@ unsigned int loadCubemap(vector<std::string> faces);
 void renderSkyBox(Shader &skyBoxShader);
 void renderShip(Shader &shipShader, Model &shipModel, bool isRenderLight);
 void renderWater(Shader &waterShader, Model &waterModel, bool isRenderLight);
+void renderText(Shader &textShader, Model &textModel);
 void renderSun(Shader &sunShader, Model &sunModel);
 void renderLight(Shader &objectShader, Model &objectModel);
 void renderlightSpaceMatrix(Shader &objectShader);
@@ -31,7 +33,7 @@ void renderScreen();
 bool DebugMode = false;
 bool bloom = true;
 bool bloomKeyPressed = false;
-float exposure = 1.0f;
+float exposure = 0.5f;
 
 // settings
 const unsigned int SCR_WIDTH = 1500;
@@ -53,9 +55,8 @@ double lastFrame = 0.0f;
 
 //point light
 glm::vec3 sunPos(0.829116, 2.7817, -4.29651);
-//glm::vec3 sunPos(2.39247, 0.307163, -2.48315);
+
 // ship pos
-//glm::vec3 shipPos(0.0f, 3.0f, 0.0f);
 glm::vec3 shipPos(0.0f, 0.0f, 0.0f);
 
 int main()
@@ -97,7 +98,6 @@ int main()
 	};
 
 	unsigned int cubemapTexture = loadCubemap(faces);
-
 	// frameBuffer for color
 	unsigned int hdrFBO;
 	glGenFramebuffers(1, &hdrFBO);
@@ -181,10 +181,12 @@ int main()
 	Shader debugDepthQuad("shader/debug.vs", "shader/debug.fs");
 	Shader hdrShader("shader/hdr.vs", "shader/hdr.fs");
 	Shader blurShader("shader/blur.vs", "shader/blur.fs");
+	Shader textShader("shader/billboard.vs", "shader/billboard.fs");
 
 	Model sun("sun/sun.obj");
 	Model ourModel("boat/boat_new.obj");
 	Model water("water/water.obj");
+	Model shipName("text/text.obj");
 
 	debugDepthQuad.use();
 	debugDepthQuad.setInt("depthMap", 0);
@@ -202,7 +204,6 @@ int main()
 	hdrShader.setInt("scene", 0);
 	hdrShader.setInt("bloomBlur", 1);
 
-	
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -228,6 +229,7 @@ int main()
 			glClear(GL_DEPTH_BUFFER_BIT);
 			renderWater(depthMappingShader, water, false);
 			renderShip(depthMappingShader, ourModel, false);
+			
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	// second rendering --> color
 		glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
@@ -241,6 +243,7 @@ int main()
 			glBindTexture(GL_TEXTURE_2D, depthMap);
 			renderShip(objectShader, ourModel, true);
 			renderWater(objectShader, water, true);
+			renderText(textShader, shipName);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	//  third rendering --->blur
@@ -314,6 +317,8 @@ void processInput(GLFWwindow *window)
 	}
 	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_RELEASE)
 		bloomKeyPressed = false;
+
+
 	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
 	{
 		if (exposure > 0.0f)
@@ -453,6 +458,30 @@ void renderSkyBox(Shader &skyBoxShader) {
 	glBindVertexArray(0);
 }
 
+void renderText(Shader &textShader, Model &textModel) {
+
+	
+	glm::vec3 upOffset = glm::vec3(0.0, 2.0, 0.0);
+	glm::mat4 model = glm::mat4(1.0f);
+	model = glm::translate(model, shipPos + upOffset);
+	//model = glm::rotate(model, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+	model = glm::scale(model, glm::vec3(0.1f, 0.1f, 0.1f));
+	glm::mat4 view = camera.GetViewMatrix();
+		
+	glm::vec3 CameraRight = glm::vec3(view[0][0], view[1][0] ,view[2][0]);
+	glm::vec3 CameraUp = glm::vec3(view[0][1], view[1][1], view[2][1]);
+	textShader.use();
+	textShader.setVec3("CameraRight", CameraRight);
+	textShader.setVec3("CameraUp", CameraUp);
+	textShader.setVec3("CenterPos", shipPos + upOffset);
+
+	glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+	textShader.setMat4("model", model);
+	textShader.setMat4("projection", projection);
+	textShader.setMat4("view", view);
+	textModel.Draw(textShader);
+}
+
 void renderSun(Shader &sunShader, Model &sunModel) {
 
 	glm::mat4 model = glm::mat4(1.0f);
@@ -509,7 +538,6 @@ void renderShip(Shader &shipShader, Model &shipModel, bool isRenderLight) {
 
 	}
 	else if (isRenderLight) {
-
 		shipShader.setInt("objectNum", 1);
 
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);

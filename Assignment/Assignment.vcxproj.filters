@@ -15,10 +15,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\..\Externel Tools\glad.c">
+    <ClCompile Include="..\main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="..\main.cpp">
+    <ClCompile Include="..\..\..\..\Externel Tools\glad.c">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
@@ -63,6 +63,12 @@
       <Filter>资源文件</Filter>
     </None>
     <None Include="shader\blur.vs">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="shader\billboard.fs">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="shader\billboard.vs">
       <Filter>资源文件</Filter>
     </None>
   </ItemGroup>

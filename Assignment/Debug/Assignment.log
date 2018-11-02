@@ -1,12 +1,12 @@
 ﻿  main.cpp
-d:\学习\图形学\课设\assignment\main.cpp(301): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
-d:\学习\图形学\课设\assignment\main.cpp(303): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
-d:\学习\图形学\课设\assignment\main.cpp(305): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
-d:\学习\图形学\课设\assignment\main.cpp(307): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
-d:\学习\图形学\课设\assignment\main.cpp(338): warning C4244: “=”: 从“double”转换到“float”，可能丢失数据
-d:\学习\图形学\课设\assignment\main.cpp(339): warning C4244: “=”: 从“double”转换到“float”，可能丢失数据
-d:\学习\图形学\课设\assignment\main.cpp(346): warning C4244: “=”: 从“double”转换到“float”，可能丢失数据
-d:\学习\图形学\课设\assignment\main.cpp(347): warning C4244: “=”: 从“double”转换到“float”，可能丢失数据
-d:\学习\图形学\课设\assignment\main.cpp(349): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
+d:\学习\图形学\课设\assignment\main.cpp(304): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
+d:\学习\图形学\课设\assignment\main.cpp(306): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
+d:\学习\图形学\课设\assignment\main.cpp(308): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
+d:\学习\图形学\课设\assignment\main.cpp(310): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
+d:\学习\图形学\课设\assignment\main.cpp(343): warning C4244: “=”: 从“double”转换到“float”，可能丢失数据
+d:\学习\图形学\课设\assignment\main.cpp(344): warning C4244: “=”: 从“double”转换到“float”，可能丢失数据
+d:\学习\图形学\课设\assignment\main.cpp(351): warning C4244: “=”: 从“double”转换到“float”，可能丢失数据
+d:\学习\图形学\课设\assignment\main.cpp(352): warning C4244: “=”: 从“double”转换到“float”，可能丢失数据
 d:\学习\图形学\课设\assignment\main.cpp(354): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
+d:\学习\图形学\课设\assignment\main.cpp(359): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
   Assignment.vcxproj -> D:\学习\图形学\课设\Assignment\Debug\Assignment.exe
